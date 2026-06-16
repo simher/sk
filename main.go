@@ -245,12 +245,7 @@ func applyContextChange(rawConfig api.Config, contextName string) error {
 
 func selectContext(rawConfig api.Config) api.Config {
 	contexts := getContextNames(rawConfig)
-
-	rawSelection := showPrompt(contexts)
-	selectedContext, err := resolveSelection(contexts, rawSelection)
-	if err != nil {
-		fail(err.Error())
-	}
+	selectedContext := promptSelection(contexts)
 
 	checkErr(applyContextChange(rawConfig, selectedContext))
 	rawConfig.CurrentContext = selectedContext
@@ -318,11 +313,7 @@ func selectNamespace(rawConfig api.Config) {
 		}
 	}
 
-	rawSelection := showPrompt(nsNames)
-	nsSelection, err := resolveSelection(nsNames, rawSelection)
-	if err != nil {
-		fail(err.Error())
-	}
+	nsSelection := promptSelection(nsNames)
 
 	checkErr(applyNamespaceChange(rawConfig, selectedContext, nsSelection))
 }
@@ -347,6 +338,23 @@ func executor(in string) {
 	if in[0] == byte(prompt.ControlC) {
 		restoreTermState()
 		os.Exit(0)
+	}
+}
+
+func promptSelection(suggestions []string) string {
+	if len(suggestions) == 0 {
+		fail("no selections available")
+	}
+
+	for {
+		rawSelection := showPrompt(suggestions)
+		selection, err := resolveSelection(suggestions, rawSelection)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			continue
+		}
+
+		return selection
 	}
 }
 
