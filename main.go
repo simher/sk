@@ -246,10 +246,10 @@ func applyContextChange(rawConfig api.Config, contextName string) error {
 func selectContext(rawConfig api.Config) api.Config {
 	contexts := getContextNames(rawConfig)
 
-	selectedContext := showPrompt(contexts)
-
-	if !validateSelection(contexts, selectedContext) {
-		fail(fmt.Sprintf("'%s' is not a valid context selection", selectedContext))
+	rawSelection := showPrompt(contexts)
+	selectedContext, err := resolveSelection(contexts, rawSelection)
+	if err != nil {
+		fail(err.Error())
 	}
 
 	checkErr(applyContextChange(rawConfig, selectedContext))
@@ -318,10 +318,10 @@ func selectNamespace(rawConfig api.Config) {
 		}
 	}
 
-	nsSelection := showPrompt(nsNames)
-
-	if !validateSelection(nsNames, nsSelection) {
-		fail(fmt.Sprintf("'%s' is not a valid namespace selection", selectedContext))
+	rawSelection := showPrompt(nsNames)
+	nsSelection, err := resolveSelection(nsNames, rawSelection)
+	if err != nil {
+		fail(err.Error())
 	}
 
 	checkErr(applyNamespaceChange(rawConfig, selectedContext, nsSelection))
@@ -378,6 +378,35 @@ func showPrompt(suggestions []string) string {
 	)
 
 	return p.Input()
+}
+
+func resolveSelection(selections []string, input string) (string, error) {
+	selection := strings.TrimSpace(input)
+	if selection == "" {
+		if len(selections) == 0 {
+			return "", fmt.Errorf("no selections available")
+		}
+		return selections[0], nil
+	}
+
+	if validateSelection(selections, selection) {
+		return selection, nil
+	}
+
+	suggestions := make([]prompt.Suggest, 0, len(selections))
+	for _, s := range selections {
+		suggestions = append(suggestions, prompt.Suggest{Text: s})
+	}
+
+	matches := prompt.FilterFuzzy(suggestions, selection, true)
+	switch len(matches) {
+	case 0:
+		return "", fmt.Errorf("%q is not a valid selection", selection)
+	case 1:
+		return matches[0].Text, nil
+	default:
+		return "", fmt.Errorf("%q matches multiple selections; type a more specific selection", selection)
+	}
 }
 
 func validateSelection(selections []string, selection string) bool {
