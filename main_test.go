@@ -52,3 +52,27 @@ func TestResolveSelection_RejectsAmbiguousFuzzyMatch(t *testing.T) {
 	assert.EqualError(t, err, `"pr" matches multiple selections; type a more specific selection`)
 	assert.Empty(t, selection)
 }
+
+func TestResolveSelection_OtterDoesNotMatchOyster(t *testing.T) {
+	selection, err := resolveSelection([]string{"drive/w-otter", "products/m-oyster"}, "otter")
+
+	assert.NoError(t, err)
+	assert.Equal(t, "drive/w-otter", selection)
+}
+
+func TestResolveSelection_MatchesMultipleTermsInAnyOrder(t *testing.T) {
+	selections := []string{
+		"early-birds/euw1",
+		"early-birds/brave-lynx",
+		"early-birds/m-lynx",
+		"early-birds/prd-euw1",
+		"early-birds/w-badger",
+		"early-birds/dev-euw1",
+		"early-birds/stg-euw1",
+	}
+
+	selection, err := resolveSelection(selections, "stg birds")
+
+	assert.NoError(t, err)
+	assert.Equal(t, "early-birds/stg-euw1", selection)
+}

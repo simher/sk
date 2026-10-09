@@ -325,8 +325,25 @@ func completer(suggestions []string) func(in prompt.Document) []prompt.Suggest {
 			s = append(s, prompt.Suggest{Text: suggestion})
 		}
 
-		return prompt.FilterFuzzy(s, in.GetWordBeforeCursor(), true)
+		return filterSelectionSuggestions(s, in.TextBeforeCursor())
 	}
+}
+
+func filterSelectionSuggestions(suggestions []prompt.Suggest, input string) []prompt.Suggest {
+	terms := strings.Fields(input)
+	matches := suggestions
+	for _, term := range terms {
+		matches = prompt.FilterContains(matches, term, true)
+	}
+	if len(matches) > 0 {
+		return matches
+	}
+
+	matches = suggestions
+	for _, term := range terms {
+		matches = prompt.FilterFuzzy(matches, term, true)
+	}
+	return matches
 }
 
 func executor(in string) {
@@ -406,7 +423,7 @@ func resolveSelection(selections []string, input string) (string, error) {
 		suggestions = append(suggestions, prompt.Suggest{Text: s})
 	}
 
-	matches := prompt.FilterFuzzy(suggestions, selection, true)
+	matches := filterSelectionSuggestions(suggestions, selection)
 	switch len(matches) {
 	case 0:
 		return "", fmt.Errorf("%q is not a valid selection", selection)
